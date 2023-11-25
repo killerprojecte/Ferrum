@@ -1,0 +1,63 @@
+# 备份设置
+backups:
+  # Incremental Mode
+  # 增量备份模式
+  incremental: true
+  # Zip File Save Path
+  # 压缩文件储存目录
+  save-path: "plugins/Ferrum/backups/"
+  # Zip File Name
+  # - When Incremental Mode is Enable, you must delete all variable in the name
+  # 压缩文件名
+  # - 当增量模式启用时必须将压缩文件名中的变量全部删除
+  #
+  # Variables
+  # 变量
+  # - {date} Date Format
+  zip-name: "Backup_{date}.zip"
+  # Date Format
+  # 日期格式
+  # Use for {date} variable
+  # 用于 {date} 变量
+  date-format: "yyyy-MM-dd_HH-mm-ss"
+  # Zip Encrypt
+  # 压缩文件加密
+  encrypt: false
+  # Zip Encrypt Method
+  # 压缩文件加密方式
+  # [NONE, ZIP_STANDARD, ZIP_STANDARD_VARIANT_STRONG, AES]
+  encrypt-method: "NONE"
+  # Zip Compression Level
+  # 文件压缩强度
+  # Level: 0-9
+  compression-level: 5
+  # Zip Password
+  # 压缩文件密码
+  password: ""
+# Auto Backup Task Settings
+# 自动备份任务设置
+auto-backup:
+  # Cron Task (Cron 任务) [Cron4j Manual (Cron4j用法) http://www.sauronsoftware.it/projects/cron4j/manual.php]
+  # *    *    *    *    *
+  #    -    -    -    -    -
+  #    |    |    |    |    |
+  #    |    |    |    |    +----- Date in Week (每周中的第几天) (0 - 7) (Sunday [周日]=0 / 7) [Symbol Format](字母格式): sun,mon,tue,wed,thu,fri,sat
+  #    |    |    |    +---------- Months (月份) (1 - 12) [Symbol Format](字母格式): jan,feb,mar,apr ...
+  #    |    |    +--------------- Date in Month(每月中的第几天) (1 - 31)
+  #    |    +-------------------- Hours (小时) (0 - 23)
+  #    +------------------------- Minutes (分钟) (0 - 59)
+  #
+  # Example (实例): "0 12 * * 1"
+  #                 |  | | | |
+  #                 |  | | | +----- Monday (星期一)
+  #                 |  | | +------- Every Month (任何一个月)
+  #                 |  | +--------- Every Day (任何一天)
+  #                 |  +----------- 12h (十二点)
+  #                 +-------------- 0min (零分)
+  #
+  # This Task will execute in Every Monday, 12:00
+  # 该表达式将会在 每个星期一中午十二点整执行
+  cron: "0 12 * * 1"
+  # Maximum backup counts (If the count is exceeded, oldest backup will be automatically deleted.)
+  # 最大备份数量 (如果超过数量将会删除最旧的备份)
+  max-backups: 10

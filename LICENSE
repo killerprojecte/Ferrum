@@ -1,0 +1,50 @@
+                                  RGBMC Open Source License
+                                          Version 1
+                                      2023 November 25
+
+                  (c) Copyright 2023 FastMCMirror Organization & killerprojecte
+
+           Everyone is permitted to use this license, But you are not allowed to change it
+
+
+                                          Preamble
+
+                    RGBMC Open Source License is an open source agreement.
+This agreement opens up the source code while protecting the rights of developers to a certain extent.
+
+                                     Terms & Conditions
+
+(1)   Modification Limit
+We are not allowed anybody (without the project owner) to modification project identify.
+Like: Copyright, Link, Terms
+
+Project Owner can define what can be a identify
+
+(2)   Fork Limit
+We are not allowed a feature fork to support some feature in their forks
+
+If the fork will eventually merge the function into the project's main warehouse, it will be excluded.
+The merge time must be within 1 month, excluding the timeout of the main warehouse that has not been processed.
+
+When the main repository are not active, this term are not work
+
+(3)   API Limit
+We allow developers to use project API in their project with some conditions.
+- Project must be open source
+- Project must use RGBMC Open Source License
+
+(4)   Business Limit
+We allow users business use the project, But
+must show the project name to their users
+
+(5)   Distribution Restrictions
+Anyone(without owner) not allowed to distribute the source and builds for this project
+
+(6)   Authority Control
+Owner can denied anyone to use and access this project
+
+(7)   Customize Terms
+Project can customize additional terms without breaking or changing the license
+
+                            This Not A Final Version of License
+                         Terms & Conditions will change in future
