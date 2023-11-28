@@ -2,8 +2,11 @@ package dev.rgbmc.ferrum.utils;
 
 import dev.rgbmc.ferrum.Ferrum;
 import dev.rgbmc.ferrum.api.Backup;
+import dev.rgbmc.ferrum.api.objects.ResultInfo;
 import net.lingala.zip4j.model.enums.CompressionLevel;
 import net.lingala.zip4j.model.enums.EncryptionMethod;
+import org.bukkit.Bukkit;
+import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 
 import java.io.File;
@@ -22,7 +25,7 @@ public class BackupUtils {
     private static final ExecutorService executorService = Executors.newSingleThreadExecutor();
     private static boolean locked = false;
 
-    public static boolean startBackup(boolean fromCommand) {
+    public static boolean startBackup(boolean fromCommand, CommandSender sender) {
         if (locked) {
             Ferrum.instance.getLogger().warning("There is already a backup task in progress.");
             Ferrum.instance.getLogger().warning("Please wait for the task to complete before running a new backup task.");
@@ -58,7 +61,7 @@ public class BackupUtils {
                 }
             }
         }
-        Backup backup = new Backup(targetFile, workingPath.toPath());
+        Backup backup = new Backup(targetFile, workingPath.toPath(), section.getString("save-path").replace("/", "\\"));
         if (section.getBoolean("incremental")) {
             backup.setIncremental(true);
         }
@@ -66,6 +69,7 @@ public class BackupUtils {
             backup.setEncrypt(true);
             backup.setEncryptionMethod(EncryptionMethod.valueOf(section.getString("encrypt-method")));
         }
+        backup.setIgnores(section.getStringList("ignores").stream().map(s -> s.replace("/", "\\")).collect(Collectors.toList()));
         for (CompressionLevel value : CompressionLevel.values()) {
             if (value.getLevel() == section.getInt("compression-level")) {
                 backup.setCompressionLevel(value);
@@ -77,7 +81,20 @@ public class BackupUtils {
             backup.setPassword(password);
         }
         executorService.submit(() -> {
-            backup.startBackup();
+            ResultInfo resultInfo = backup.startBackup();
+            locked = false;
+            CommandSender output;
+            if (fromCommand) {
+                output = sender;
+            } else {
+                output = Bukkit.getConsoleSender();
+            }
+            output.sendMessage(Color.color("&aBackup Task Finished!"));
+            if (backup.isIncremental()) {
+                output.sendMessage(Color.color("&7[&a+&7] " + resultInfo.getAdditions()));
+                output.sendMessage(Color.color("&7[&e/&7] " + resultInfo.getModifications()));
+                output.sendMessage(Color.color("&7[&c-&7] " + resultInfo.getDeletions()));
+            }
         });
         return true;
     }
@@ -90,7 +107,6 @@ public class BackupUtils {
         String zipName = section.getString("zip-name")
                 .replace("{date}", simpleDateFormat.format(new Date()));
 
-        File zipFile = new File(folder, zipName);
-        return zipFile;
+        return new File(folder, zipName);
     }
 }

@@ -1,5 +1,6 @@
 plugins {
     id 'java'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
 }
 
 group = 'dev.rgbmc'
@@ -48,4 +49,10 @@ processResources {
     filesMatching('plugin.yml') {
         expand props
     }
+}
+
+shadowJar {
+    archiveClassifier = ""
+    relocate("it.sauronsoftware.cron4j", "dev.rgbmc.ferrum.libs.cron4j")
+    relocate("net.lingala.zip4j", "dev.rgbmc.ferrum.libs.zip4j")
 }

@@ -34,6 +34,13 @@ backups:
   # Zip Password
   # 压缩文件密码
   password: ""
+  # Ignore Files
+  # 忽略文件
+  ignores:
+    - "assets\\"
+    - "cache\\"
+    - "libraries\\"
+    - "session.lock"
 # Auto Backup Task Settings
 # 自动备份任务设置
 auto-backup:

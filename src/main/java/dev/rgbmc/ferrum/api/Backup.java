@@ -44,10 +44,13 @@ public class Backup {
     private CompressionLevel compressionLevel = CompressionLevel.NORMAL;
     private EncryptionMethod encryptionMethod = EncryptionMethod.AES;
     private AesKeyStrength aesKeyStrength = AesKeyStrength.KEY_STRENGTH_256;
+    private List<String> ignores = new ArrayList<>();
+    private final String zipPath;
 
-    public Backup(File zipFile, Path folder) {
+    public Backup(File zipFile, Path folder, String zipPath) {
         this.file = zipFile;
         this.folder = folder;
+        this.zipPath = zipPath;
     }
 
     private static String getComment() {
@@ -61,6 +64,7 @@ public class Backup {
     }
 
     public ResultInfo startBackup() {
+        //System.out.println(zipPath);
         AtomicInteger deletions = new AtomicInteger(0);
         AtomicInteger modifications = new AtomicInteger(0);
         AtomicInteger additions = new AtomicInteger(0);
@@ -88,30 +92,33 @@ public class Backup {
                     }
                     if (fileHeader.getCrc() != CRCUtils.getCRC(targetFile)) {
                         zipFile.removeFile(fileHeader);
-                        zipFile.addFile(targetFile);
+                        zipFile.addFile(targetFile, getParameters(zipParameters, targetFile, folder));
                         modifications.getAndIncrement();
                     }
                 }
             }
             Files.walkFileTree(folder, new SimpleFileVisitor<Path>() {
                 @Override
-                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
-                    File walkingFile = file.toFile();
+                public FileVisitResult visitFile(Path walkingPath, BasicFileAttributes attrs) {
+                    File walkingFile = walkingPath.toFile();
                     if (walkingFile.canWrite() && walkingFile.canRead()) {
-                        Path relativizedPath = folder.relativize(file);
+                        Path relativizedPath = folder.relativize(walkingPath);
+                        //System.out.println(folder.relativize(file.toPath()).toString());
+                        if (relativizedPath.toString().contains(zipPath)) return FileVisitResult.CONTINUE;
+                        if (ignores.stream().anyMatch(s -> relativizedPath.toString().startsWith(s) || relativizedPath.toString().endsWith(s))) return FileVisitResult.CONTINUE;
                         try {
                             if (incremental) {
                                 FileHeader fileHeader = zipFile.getFileHeader(relativizedPath.toString());
                                 if (fileHeader != null) return FileVisitResult.CONTINUE;
                             }
-                            zipFile.addFile(walkingFile, zipParameters);
+                            zipFile.addFile(walkingFile, getParameters(zipParameters, walkingFile, folder));
                             additions.getAndIncrement();
                         } catch (IOException e) {
                             e.printStackTrace();
-                            logger.error("Failed to zipping file " + relativizedPath + ", Error message: " + e.getMessage());
+                            logger.error("[Skipped] Failed to zipping file " + relativizedPath + ", Error message: " + e.getMessage());
                         }
                     } else {
-                        logger.warn("File " + folder.relativize(file) + " has been locked by other process or system, Ferrum skipped compress this file");
+                        logger.warn("File " + folder.relativize(walkingPath) + " has been locked by other process or system, Ferrum skipped compress this file");
                     }
                     return FileVisitResult.CONTINUE;
                 }
@@ -139,7 +146,15 @@ public class Backup {
         if (compressionMethod == CompressionMethod.DEFLATE) {
             zipParameters.setCompressionLevel(compressionLevel);
         }
+        zipParameters.setIncludeRootFolder(true);
         return zipParameters;
+    }
+
+    private ZipParameters getParameters(ZipParameters zipParameters, File file, Path folder) {
+        ZipParameters copy = new ZipParameters(zipParameters);
+        Path relativizedPath = folder.relativize(file.getParentFile().toPath());
+        copy.setRootFolderNameInZip(relativizedPath.toString());
+        return copy;
     }
 
     public boolean isEncrypt() {
@@ -204,5 +219,13 @@ public class Backup {
 
     public void registerHandler(AbstractHandler handler) {
         handlers.add(handler);
+    }
+
+    public void setIgnores(List<String> ignores) {
+        this.ignores = ignores;
+    }
+
+    public List<String> getIgnores() {
+        return ignores;
     }
 }

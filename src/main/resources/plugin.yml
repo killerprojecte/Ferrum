@@ -5,3 +5,14 @@ api-version: '1.13'
 load: STARTUP
 authors: [ FlyProject ]
 description: An open source incremental backup solution for Minecraft Server
+commands:
+  ferrum:
+    aliases:
+      - backup
+      - fe
+      - fer
+      - fbackup
+    permission: ferrum.admin
+permissions:
+  ferrum.admin:
+    default: op

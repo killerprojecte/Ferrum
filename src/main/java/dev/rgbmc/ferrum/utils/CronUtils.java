@@ -12,7 +12,7 @@ public class CronUtils {
             scheduler.deschedule(taskId);
         }
         taskId = scheduler.schedule(cron, () -> {
-            if (!BackupUtils.startBackup(false)) {
+            if (!BackupUtils.startBackup(false, null)) {
                 Ferrum.instance.getLogger().severe("Unable to execute Cron task, there is already a backup task in progress");
             }
         });
