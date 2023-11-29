@@ -3,10 +3,9 @@ package dev.rgbmc.ferrum.api;
 import dev.rgbmc.ferrum.api.handlers.AbstractHandler;
 import dev.rgbmc.ferrum.api.handlers.SimpleHandler;
 import dev.rgbmc.ferrum.api.objects.ResultInfo;
-import dev.rgbmc.ferrum.api.utils.CRCUtils;
 import dev.rgbmc.ferrum.api.utils.LogoUtils;
-import net.lingala.zip4j.ZipFile;
-import net.lingala.zip4j.model.FileHeader;
+import io.sigpipe.jbsdiff.Diff;
+import net.lingala.zip4j.io.outputstream.ZipOutputStream;
 import net.lingala.zip4j.model.ZipParameters;
 import net.lingala.zip4j.model.enums.AesKeyStrength;
 import net.lingala.zip4j.model.enums.CompressionLevel;
@@ -16,27 +15,21 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.*;
 
 public class Backup {
 
     public final static Logger logger = LoggerFactory.getLogger("Ferrum");
     private static final SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-
-    private final File file;
     private final Path folder;
     private final List<AbstractHandler> handlers = new ArrayList<>(Collections.singletonList(new SimpleHandler()));
+    private final String zipPath;
+    private File file;
     private String password = null;
     private boolean encrypt = false;
     private boolean incremental = false;
@@ -45,7 +38,6 @@ public class Backup {
     private EncryptionMethod encryptionMethod = EncryptionMethod.AES;
     private AesKeyStrength aesKeyStrength = AesKeyStrength.KEY_STRENGTH_256;
     private List<String> ignores = new ArrayList<>();
-    private final String zipPath;
 
     public Backup(File zipFile, Path folder, String zipPath) {
         this.file = zipFile;
@@ -65,73 +57,91 @@ public class Backup {
 
     public ResultInfo startBackup() {
         //System.out.println(zipPath);
-        AtomicInteger deletions = new AtomicInteger(0);
-        AtomicInteger modifications = new AtomicInteger(0);
-        AtomicInteger additions = new AtomicInteger(0);
         try {
             ZipParameters zipParameters = getZipParameters();
             if (!incremental) {
                 logger.warn("Zip File already exist, Ferrum will delete it when progress start");
                 file.delete();
             }
-            ZipFile zipFile;
-            if (password == null) {
-                zipFile = new ZipFile(file);
-            } else {
-                zipFile = new ZipFile(file, password.toCharArray());
-            }
+            long count = Arrays.stream(file.getParentFile().listFiles()).filter(file1 -> file1.getName().endsWith(".zip")).count();
+            ZipOutputStream zipOutputStream = initializeZipOutputStream(
+                    file,
+                    password != null,
+                    (password == null ? new char[0] : password.toCharArray()),
+                    incremental
+            );
+            walkingFile(zipOutputStream, zipParameters, folder.toFile());
+            zipOutputStream.setComment(getComment());
+            zipOutputStream.close();
             if (incremental) {
-                List<FileHeader> fileHeaders = new ArrayList<>(zipFile.getFileHeaders());
-                for (FileHeader fileHeader : fileHeaders) {
-                    Path targetPath = folder.resolve(fileHeader.getFileName());
-                    File targetFile = targetPath.toFile();
-                    if (!targetFile.exists()) {
-                        zipFile.removeFile(fileHeader);
-                        deletions.getAndIncrement();
-                        continue;
-                    }
-                    if (fileHeader.getCrc() != CRCUtils.getCRC(targetFile)) {
-                        zipFile.removeFile(fileHeader);
-                        zipFile.addFile(targetFile, getParameters(zipParameters, targetFile, folder));
-                        modifications.getAndIncrement();
-                    }
+                if (count >= 1) {
+                    String originalFileName = file.getName();
+                    file = new File(file.getParentFile(), originalFileName + ".tmp");
+                    File diffFile = new File(file.getParentFile(), originalFileName + ".patch");
+                    FileOutputStream fileOutputStream = new FileOutputStream(diffFile);
+                    File zip = Arrays.stream(file.getParentFile().listFiles()).filter(file1 -> file1.getName().endsWith(".zip")).findFirst().get();
+                    Diff.diff(Files.readAllBytes(zip.toPath()), Files.readAllBytes(file.toPath()), fileOutputStream);
+                    file.delete();
+                    file = diffFile;
                 }
             }
-            Files.walkFileTree(folder, new SimpleFileVisitor<Path>() {
-                @Override
-                public FileVisitResult visitFile(Path walkingPath, BasicFileAttributes attrs) {
-                    File walkingFile = walkingPath.toFile();
-                    if (walkingFile.canWrite() && walkingFile.canRead()) {
-                        Path relativizedPath = folder.relativize(walkingPath);
-                        //System.out.println(folder.relativize(file.toPath()).toString());
-                        if (relativizedPath.toString().contains(zipPath)) return FileVisitResult.CONTINUE;
-                        if (ignores.stream().anyMatch(s -> relativizedPath.toString().startsWith(s) || relativizedPath.toString().endsWith(s))) return FileVisitResult.CONTINUE;
-                        try {
-                            if (incremental) {
-                                FileHeader fileHeader = zipFile.getFileHeader(relativizedPath.toString());
-                                if (fileHeader != null) return FileVisitResult.CONTINUE;
-                            }
-                            zipFile.addFile(walkingFile, getParameters(zipParameters, walkingFile, folder));
-                            additions.getAndIncrement();
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                            logger.error("[Skipped] Failed to zipping file " + relativizedPath + ", Error message: " + e.getMessage());
-                        }
-                    } else {
-                        logger.warn("File " + folder.relativize(walkingPath) + " has been locked by other process or system, Ferrum skipped compress this file");
-                    }
-                    return FileVisitResult.CONTINUE;
-                }
-            });
-            zipFile.setComment(getComment());
-            zipFile.close();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
         handlers.forEach(handler -> {
             handler.handleZipFile(file, folder);
         });
-        return new ResultInfo(deletions.get(), modifications.get(), additions.get());
+        return new ResultInfo(this, file);
+    }
+
+    private void walkingFile(ZipOutputStream zipOutputStream, ZipParameters zipParameters, File file) {
+        Path walkingPath = file.toPath();
+        Path relativizedPath = folder.relativize(walkingPath);
+        //System.out.println(folder.relativize(file.toPath()));
+        if (relativizedPath.toString().contains(zipPath)) return;
+        if (ignores.stream().anyMatch(s -> relativizedPath.toString().startsWith(s) || relativizedPath.toString().endsWith(s)))
+            return;
+        if (file.isDirectory()) {
+            for (File children : file.listFiles()) {
+                walkingFile(zipOutputStream, zipParameters, children);
+            }
+        } else {
+            saveFile(zipOutputStream, zipParameters, file);
+        }
+    }
+
+    private void saveFile(ZipOutputStream zipOutputStream, ZipParameters zipParameters, File file) {
+        Path walkingPath = file.toPath();
+        if (file.canWrite() && file.canRead()) {
+            Path relativizedPath = folder.relativize(walkingPath);
+            if (relativizedPath.toString().contains(zipPath)) return;
+            if (ignores.stream().anyMatch(s -> relativizedPath.toString().startsWith(s) || relativizedPath.toString().endsWith(s)))
+                return;
+            try {
+                zipOutputStream.putNextEntry(getParameters(zipParameters, file, folder));
+                zipOutputStream.write(Files.readAllBytes(walkingPath));
+                zipOutputStream.closeEntry();
+            } catch (Exception e) {
+                e.printStackTrace();
+                logger.error("[Skipped] Failed to zipping file " + relativizedPath + ", Error message: " + e.getMessage());
+            }
+        } else {
+            logger.warn("File " + folder.relativize(walkingPath) + " has been locked by other process or system, Ferrum skipped compress this file");
+        }
+    }
+
+    private ZipOutputStream initializeZipOutputStream(File outputZipFile, boolean encrypt, char[] password, boolean incremental) throws IOException {
+        if (Arrays.stream(outputZipFile.getParentFile().listFiles()).anyMatch(file1 -> file1.getName().endsWith(".zip"))) {
+            outputZipFile = new File(outputZipFile.getParentFile(), outputZipFile.getName() + ".tmp");
+        }
+
+        FileOutputStream fos = new FileOutputStream(outputZipFile);
+
+        if (!encrypt) {
+            password = null;
+        }
+
+        return new ZipOutputStream(fos, password);
     }
 
     private ZipParameters getZipParameters() {
@@ -147,13 +157,14 @@ public class Backup {
             zipParameters.setCompressionLevel(compressionLevel);
         }
         zipParameters.setIncludeRootFolder(true);
+        zipParameters.setOverrideExistingFilesInZip(true);
         return zipParameters;
     }
 
     private ZipParameters getParameters(ZipParameters zipParameters, File file, Path folder) {
         ZipParameters copy = new ZipParameters(zipParameters);
-        Path relativizedPath = folder.relativize(file.getParentFile().toPath());
-        copy.setRootFolderNameInZip(relativizedPath.toString());
+        Path relativizedPath = folder.relativize(file.toPath());
+        copy.setFileNameInZip(relativizedPath.toString());
         return copy;
     }
 
@@ -221,11 +232,23 @@ public class Backup {
         handlers.add(handler);
     }
 
+    public List<String> getIgnores() {
+        return ignores;
+    }
+
     public void setIgnores(List<String> ignores) {
         this.ignores = ignores;
     }
 
-    public List<String> getIgnores() {
-        return ignores;
+    public File getFile() {
+        return file;
+    }
+
+    public String getZipPath() {
+        return zipPath;
+    }
+
+    public Path getFolder() {
+        return folder;
     }
 }

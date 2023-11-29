@@ -1,25 +1,23 @@
 package dev.rgbmc.ferrum.api.objects;
 
+import dev.rgbmc.ferrum.api.Backup;
+
+import java.io.File;
+
 public class ResultInfo {
-    private final int deletions;
-    private final int modifications;
-    private final int additions;
+    private final Backup backup;
+    private final File file;
 
-    public ResultInfo(int deletions, int modifications, int additions) {
-        this.deletions = deletions;
-        this.modifications = modifications;
-        this.additions = additions;
+    public ResultInfo(Backup backup, File file) {
+        this.backup = backup;
+        this.file = file;
     }
 
-    public int getAdditions() {
-        return additions;
+    public Backup getBackup() {
+        return backup;
     }
 
-    public int getDeletions() {
-        return deletions;
-    }
-
-    public int getModifications() {
-        return modifications;
+    public File getFile() {
+        return file;
     }
 }

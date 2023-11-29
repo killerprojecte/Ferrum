@@ -9,7 +9,6 @@ backups:
   # Zip File Name
   # - When Incremental Mode is Enable, you must delete all variable in the name
   # 压缩文件名
-  # - 当增量模式启用时必须将压缩文件名中的变量全部删除
   #
   # Variables
   # 变量
@@ -41,6 +40,11 @@ backups:
     - "cache\\"
     - "libraries\\"
     - "session.lock"
+  # Finished Tasks
+  # 完成后执行任务
+  finished-tasks:
+    - "cli(cmd.exe /c \"start cmd.exe /c pause\")"
+  # 修补版本
 # Auto Backup Task Settings
 # 自动备份任务设置
 auto-backup:

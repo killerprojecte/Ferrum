@@ -4,7 +4,7 @@ import dev.rgbmc.ferrum.Ferrum;
 import it.sauronsoftware.cron4j.Scheduler;
 
 public class CronUtils {
-    private static Scheduler scheduler = new Scheduler();
+    private static final Scheduler scheduler = new Scheduler();
     private static String taskId = null;
 
     public static void startSchedule(String cron) {

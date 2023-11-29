@@ -14,7 +14,6 @@ import java.nio.file.Files;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -91,10 +90,10 @@ public class BackupUtils {
             }
             output.sendMessage(Color.color("&aBackup Task Finished!"));
             if (backup.isIncremental()) {
-                output.sendMessage(Color.color("&7[&a+&7] " + resultInfo.getAdditions()));
-                output.sendMessage(Color.color("&7[&e/&7] " + resultInfo.getModifications()));
-                output.sendMessage(Color.color("&7[&c-&7] " + resultInfo.getDeletions()));
+                if (resultInfo.getFile().getName().endsWith(".patch"))
+                    output.sendMessage(Color.color("&ePatch Created! &8[&7" + resultInfo.getFile().getName() + "&8]"));
             }
+            Ferrum.taskManager.parseExpressions(section.getStringList("finished-tasks"), resultInfo, backup);
         });
         return true;
     }

@@ -11,6 +11,12 @@ import java.util.concurrent.CompletableFuture;
 import static dev.rgbmc.ferrum.utils.Color.color;
 
 public class FerrumCommand implements CommandExecutor {
+    private static void sendHelp(CommandSender sender) {
+        sender.sendMessage(color("&6&lFerrum &8- &cHelp"));
+        sender.sendMessage(color("&b/ferrum backup"));
+        sender.sendMessage(color("&b/ferrum reload"));
+    }
+
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!sender.hasPermission("ferrum.admin")) return false;
@@ -31,11 +37,5 @@ public class FerrumCommand implements CommandExecutor {
             sendHelp(sender);
         }
         return false;
-    }
-
-    private static void sendHelp(CommandSender sender) {
-        sender.sendMessage(color("&6&lFerrum &8- &cHelp"));
-        sender.sendMessage(color("&b/ferrum backup"));
-        sender.sendMessage(color("&b/ferrum reload"));
     }
 }
