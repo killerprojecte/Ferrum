@@ -44,6 +44,9 @@ backups:
   # 完成后执行任务
   finished-tasks:
     - "cli(cmd.exe /c \"start cmd.exe /c pause\")"
+  # Reading Buffer Size
+  # 文件读取缓存大小
+  buffer: 1024
   # 修补版本
 # Auto Backup Task Settings
 # 自动备份任务设置

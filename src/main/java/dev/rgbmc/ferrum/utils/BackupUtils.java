@@ -16,12 +16,10 @@ import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 public class BackupUtils {
-    private static final ExecutorService executorService = Executors.newSingleThreadExecutor();
+
     private static boolean locked = false;
 
     public static boolean startBackup(boolean fromCommand, CommandSender sender) {
@@ -79,7 +77,7 @@ public class BackupUtils {
         if (password != null && !password.isEmpty()) {
             backup.setPassword(password);
         }
-        executorService.submit(() -> {
+        Backup.submitTask(() -> {
             ResultInfo resultInfo = backup.startBackup();
             locked = false;
             CommandSender output;

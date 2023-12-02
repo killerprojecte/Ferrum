@@ -1,6 +1,7 @@
 package dev.rgbmc.ferrum.commands;
 
 import dev.rgbmc.ferrum.Ferrum;
+import dev.rgbmc.ferrum.api.objects.ResultInfo;
 import dev.rgbmc.ferrum.utils.BackupUtils;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -30,6 +31,11 @@ public class FerrumCommand implements CommandExecutor {
                     BackupUtils.startBackup(true, sender);
                 });
                 sender.sendMessage(color("&aBackup Task Started!"));
+            } else if (args[0].equalsIgnoreCase("task")) {
+                sender.sendMessage(color("&cForce executed tasks (Only Support for test CLI Task)"));
+                CompletableFuture.runAsync(() -> {
+                    Ferrum.taskManager.parseExpressions(Ferrum.instance.getConfig().getStringList("backups.finished-tasks"), new ResultInfo(null, null), null);
+                });
             } else {
                 sendHelp(sender);
             }

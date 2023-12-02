@@ -27,7 +27,7 @@ public final class Ferrum extends JavaPlugin {
     }
 
     public void reloadCron() {
-        CronUtils.stopSchedule();
+        //CronUtils.stopSchedule();
         CronUtils.startSchedule(getConfig().getString("auto-backup.cron"));
     }
 }

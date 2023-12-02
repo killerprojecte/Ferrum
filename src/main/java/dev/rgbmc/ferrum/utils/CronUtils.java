@@ -8,19 +8,22 @@ public class CronUtils {
     private static String taskId = null;
 
     public static void startSchedule(String cron) {
-        if (taskId != null) {
-            scheduler.deschedule(taskId);
-        }
+        stopSchedule();
+        Ferrum.instance.getLogger().info("Cron Task Scheduled [" + cron + " +] TimeZone: " + scheduler.getTimeZone().getDisplayName());
         taskId = scheduler.schedule(cron, () -> {
+            Ferrum.instance.getLogger().info("Cron Task Running");
             if (!BackupUtils.startBackup(false, null)) {
                 Ferrum.instance.getLogger().severe("Unable to execute Cron task, there is already a backup task in progress");
             }
         });
+        scheduler.start();
     }
 
     public static void stopSchedule() {
         if (taskId != null) {
+            scheduler.stop();
             scheduler.deschedule(taskId);
+            taskId = null;
         }
     }
 }

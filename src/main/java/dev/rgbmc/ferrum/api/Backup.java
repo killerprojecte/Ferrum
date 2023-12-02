@@ -3,8 +3,8 @@ package dev.rgbmc.ferrum.api;
 import dev.rgbmc.ferrum.api.handlers.AbstractHandler;
 import dev.rgbmc.ferrum.api.handlers.SimpleHandler;
 import dev.rgbmc.ferrum.api.objects.ResultInfo;
+import dev.rgbmc.ferrum.api.utils.DiffUtils;
 import dev.rgbmc.ferrum.api.utils.LogoUtils;
-import io.sigpipe.jbsdiff.Diff;
 import net.lingala.zip4j.io.outputstream.ZipOutputStream;
 import net.lingala.zip4j.model.ZipParameters;
 import net.lingala.zip4j.model.enums.AesKeyStrength;
@@ -14,6 +14,7 @@ import net.lingala.zip4j.model.enums.EncryptionMethod;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -21,11 +22,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class Backup {
 
     public final static Logger logger = LoggerFactory.getLogger("Ferrum");
     private static final SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    private static final ExecutorService executorService = Executors.newFixedThreadPool(4);
     private final Path folder;
     private final List<AbstractHandler> handlers = new ArrayList<>(Collections.singletonList(new SimpleHandler()));
     private final String zipPath;
@@ -55,6 +59,10 @@ public class Backup {
                 "[Consider Sponsoring us to keep this Open Source]";
     }
 
+    public static void submitTask(Runnable runnable) {
+        executorService.submit(runnable);
+    }
+
     public ResultInfo startBackup() {
         //System.out.println(zipPath);
         try {
@@ -71,6 +79,7 @@ public class Backup {
                     incremental
             );
             walkingFile(zipOutputStream, zipParameters, folder.toFile());
+            if (incremental) logger.info("Temp File has finished creating");
             zipOutputStream.setComment(getComment());
             zipOutputStream.close();
             if (incremental) {
@@ -80,12 +89,13 @@ public class Backup {
                     File diffFile = new File(file.getParentFile(), originalFileName + ".patch");
                     FileOutputStream fileOutputStream = new FileOutputStream(diffFile);
                     File zip = Arrays.stream(file.getParentFile().listFiles()).filter(file1 -> file1.getName().endsWith(".zip")).findFirst().get();
-                    Diff.diff(Files.readAllBytes(zip.toPath()), Files.readAllBytes(file.toPath()), fileOutputStream);
+                    DiffUtils.createDiffFile(zip, file, diffFile);
                     file.delete();
                     file = diffFile;
                 }
             }
         } catch (Exception e) {
+            e.printStackTrace();
             throw new RuntimeException(e);
         }
         handlers.forEach(handler -> {
@@ -119,7 +129,13 @@ public class Backup {
                 return;
             try {
                 zipOutputStream.putNextEntry(getParameters(zipParameters, file, folder));
-                zipOutputStream.write(Files.readAllBytes(walkingPath));
+                byte[] buff = new byte[4096];
+                try (BufferedInputStream inputStream = new BufferedInputStream(Files.newInputStream(walkingPath), 4096)) {
+                    int readLen;
+                    while ((readLen = inputStream.read(buff)) != -1) {
+                        zipOutputStream.write(buff, 0, readLen);
+                    }
+                }
                 zipOutputStream.closeEntry();
             } catch (Exception e) {
                 e.printStackTrace();

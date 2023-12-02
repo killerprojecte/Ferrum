@@ -19,6 +19,9 @@ repositories {
     maven {
         url = "https://repo.fastmcmirror.org/content/repositories/releases/"
     }
+    maven {
+        url = "https://jitpack.io"
+    }
 }
 
 dependencies {
@@ -28,7 +31,7 @@ dependencies {
     implementation "net.lingala.zip4j:zip4j:2.11.5"
     implementation "it.sauronsoftware.cron4j:cron4j:2.2.5"
     implementation "dev.rgbmc:FastExpression:1.0.0-a0aa2c1"
-    implementation "io.sigpipe:jbsdiff:1.0"
+    implementation "org.badiff:badiff:1.2.1"
 }
 
 def targetJavaVersion = 8
@@ -61,4 +64,5 @@ shadowJar {
     relocate("it.sauronsoftware.cron4j", "dev.rgbmc.ferrum.libs.cron4j")
     relocate("net.lingala.zip4j", "dev.rgbmc.ferrum.libs.zip4j")
     relocate("io.sigpipe.jbsdiff", "dev.rgbmc.ferrum.libs.jbsdiff")
+    relocate("dev.rgbmc.expression", "dev.rgbmc.ferrum.libs.expression")
 }
