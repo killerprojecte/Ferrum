@@ -11,8 +11,6 @@ public class FerrumZipTest {
         Backup backup = new Backup(new File(folder, "test/output/Zipped.zip"), folder.toPath().resolve("test/files"), "test/output/");
         backup.setIncremental(false);
         ResultInfo resultInfo = backup.startBackup();
-        System.out.println("[+] " + resultInfo.getAdditions());
-        System.out.println("[/] " + resultInfo.getModifications());
-        System.out.println("[-] " + resultInfo.getDeletions());
+        System.out.println(resultInfo.getFile().getName());
     }
 }
