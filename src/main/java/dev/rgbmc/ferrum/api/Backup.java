@@ -29,6 +29,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -109,17 +110,33 @@ public class Backup {
                         originZipFile = new ZipFile(originZip);
                     }
                     IncrementalIndex index = new IncrementalIndex();
-                    for (FileHeader fileHeader : originZipFile.getFileHeaders()) {
-                        cachedFileHeader.put(fileHeader.getFileName(), fileHeader);
-                        Path realPath = folder.resolve(fileHeader.getFileName());
-                        File realFile = realPath.toFile();
-                        if (!realFile.exists()) {
-                            index.getDeletion().add(fileHeader.getFileName());
-                        } else if (fileHeader.getCrc() != CRCUtils.getCRC(realFile)) {
-                            index.getModification().add(fileHeader.getFileName());
-                            writeFileToZip(zipOutputStream, zipParameters, realFile);
-                        }
+                    //long time = System.currentTimeMillis();
+                    List<FileHeader> fileHeaders = new ArrayList<>(originZipFile.getFileHeaders());
+                    //System.out.println("Copied headers");
+                    ExecutorService executor = Executors.newFixedThreadPool(4);
+                    CountDownLatch latch = new CountDownLatch(fileHeaders.size());
+                    for (FileHeader fileHeader : fileHeaders) {
+                        executor.submit(() -> {
+                            try {
+                                cachedFileHeader.put(fileHeader.getFileName(), fileHeader);
+                                Path realPath = folder.resolve(fileHeader.getFileName());
+                                File realFile = realPath.toFile();
+                                if (!realFile.exists()) {
+                                    index.getDeletion().add(fileHeader.getFileName());
+                                } else if (fileHeader.getCrc() != CRCUtils.getCRC(realFile)) {
+                                    index.getModification().add(fileHeader.getFileName());
+                                    writeFileToZip(zipOutputStream, zipParameters, realFile);
+                                }
+                            } catch (Exception e) {
+                                e.printStackTrace(System.err);
+                            } finally {
+                                latch.countDown();
+                            }
+                        });
                     }
+                    latch.await();
+                    executor.shutdown();
+                    //System.out.println("Finished File-Header loop in " + (System.currentTimeMillis() - time));
                     walkingFile(index, zipOutputStream, folder.toFile(), zipParameters);
                     File tempFile = File.createTempFile("Ferrum_Incremental_", ".json");
                     String json = new Gson().toJson(index);
@@ -128,7 +145,9 @@ public class Backup {
                             StandardOpenOption.WRITE,
                             StandardOpenOption.TRUNCATE_EXISTING);
                     writeFileToZip(zipOutputStream, getParameters(zipParameters, "ferrum_index.json"), tempFile, false);
-                    zipOutputStream.setComment(getComment() + "\n[Incremental Mode File]");
+                    zipOutputStream.setComment("[Incremental Zip File]\n" +
+                            "!! This file contains only files changed between the full-data zip (names containing .full) !!\n"
+                            + getComment());
                     zipOutputStream.close();
                     tempFile.deleteOnExit();
                     originZipFile.close();
@@ -144,7 +163,7 @@ public class Backup {
             zipOutputStream.close();
         } catch (Exception e) {
             e.printStackTrace(System.err);
-            throw new RuntimeException(e);
+            return null;
         }
         handlers.forEach(handler -> {
             handler.handleZipFile(file, folder);
@@ -159,13 +178,15 @@ public class Backup {
         if (relativizedPath.toString().contains(zipPath)) return;
         if (ignores.stream().anyMatch(s -> relativizedPath.toString().startsWith(s) || relativizedPath.toString().endsWith(s)))
             return;
-        if (file.isDirectory()) {
-            for (File children : file.listFiles()) {
-                walkingFile(zipOutputStream, zipParameters, children);
+        executorService.submit(() -> {
+            if (file.isDirectory()) {
+                for (File children : file.listFiles()) {
+                    walkingFile(zipOutputStream, zipParameters, children);
+                }
+            } else {
+                saveFile(zipOutputStream, zipParameters, file);
             }
-        } else {
-            saveFile(zipOutputStream, zipParameters, file);
-        }
+        });
     }
 
     private void walkingFile(IncrementalIndex index, ZipOutputStream zipOutputStream, File file, ZipParameters zipParameters) {
@@ -175,13 +196,15 @@ public class Backup {
         if (relativizedPath.toString().contains(zipPath)) return;
         if (ignores.stream().anyMatch(s -> relativizedPath.toString().startsWith(s) || relativizedPath.toString().endsWith(s)))
             return;
-        if (file.isDirectory()) {
-            for (File children : file.listFiles()) {
-                walkingFile(index, zipOutputStream, children, zipParameters);
+        executorService.submit(() -> {
+            if (file.isDirectory()) {
+                for (File children : file.listFiles()) {
+                    walkingFile(index, zipOutputStream, children, zipParameters);
+                }
+            } else {
+                saveFile(index, zipOutputStream, file, zipParameters);
             }
-        } else {
-            saveFile(index, zipOutputStream, file, zipParameters);
-        }
+        });
     }
 
     private void saveFile(ZipOutputStream zipOutputStream, ZipParameters zipParameters, File file) {
@@ -206,7 +229,7 @@ public class Backup {
         writeFileToZip(zipOutputStream, zipParameters, file, true);
     }
 
-    private void writeFileToZip(ZipOutputStream zipOutputStream, ZipParameters zipParameters, File file, boolean newParameters) throws IOException {
+    private synchronized void writeFileToZip(ZipOutputStream zipOutputStream, ZipParameters zipParameters, File file, boolean newParameters) throws IOException {
         if (newParameters) zipParameters = getParameters(zipParameters, file, folder);
         zipOutputStream.putNextEntry(zipParameters);
         byte[] buff = new byte[4096];
