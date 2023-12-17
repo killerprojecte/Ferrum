@@ -13,6 +13,8 @@ import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.text.SimpleDateFormat;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
@@ -78,6 +80,7 @@ public class BackupUtils {
             backup.setPassword(password);
         }
         Backup.submitTask(() -> {
+            Instant startTime = Instant.now();
             ResultInfo resultInfo = backup.startBackup();
             locked = false;
             CommandSender output;
@@ -86,11 +89,9 @@ public class BackupUtils {
             } else {
                 output = Bukkit.getConsoleSender();
             }
-            output.sendMessage(Color.color("&aBackup Task Finished!"));
-            if (backup.isIncremental()) {
-                if (resultInfo.getFile().getName().endsWith(".patch"))
-                    output.sendMessage(Color.color("&ePatch Created! &8[&7" + resultInfo.getFile().getName() + "&8]"));
-            }
+            Instant endTime = Instant.now();
+            Duration duration = Duration.between(startTime, endTime);
+            output.sendMessage(Color.color("&aBackup Task Finished! &7(&eTime Used: " + getBetweenTime(duration.getSeconds()) + "&7)"));
             Ferrum.taskManager.parseExpressions(section.getStringList("finished-tasks"), resultInfo, backup);
         });
         return true;
@@ -105,5 +106,11 @@ public class BackupUtils {
                 .replace("{date}", simpleDateFormat.format(new Date()));
 
         return new File(folder, zipName);
+    }
+
+    private static String getBetweenTime(long betweenSeconds) {
+        long hour = 1000 * 60 * 60;
+        long min = 1000 * 60;
+        return String.format("%dh %dm %ds", betweenSeconds / hour, betweenSeconds % hour / min, betweenSeconds % hour % min);
     }
 }

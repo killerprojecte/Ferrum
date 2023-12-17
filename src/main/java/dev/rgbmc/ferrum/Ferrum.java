@@ -1,5 +1,6 @@
 package dev.rgbmc.ferrum;
 
+import dev.rgbmc.ferrum.api.Backup;
 import dev.rgbmc.ferrum.commands.FerrumCommand;
 import dev.rgbmc.ferrum.tasks.TaskManager;
 import dev.rgbmc.ferrum.utils.CronUtils;
@@ -23,6 +24,8 @@ public final class Ferrum extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        getLogger().warning("[WARNING] Disabling Ferrum, we are shutting down all running backup tasks. This action may will make backup file broken!");
+        Backup.shutdown();
         // Plugin shutdown logic
     }
 

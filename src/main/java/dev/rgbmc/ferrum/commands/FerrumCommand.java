@@ -14,8 +14,8 @@ import static dev.rgbmc.ferrum.utils.Color.color;
 public class FerrumCommand implements CommandExecutor {
     private static void sendHelp(CommandSender sender) {
         sender.sendMessage(color("&6&lFerrum &8- &cHelp"));
-        sender.sendMessage(color("&b/ferrum backup"));
-        sender.sendMessage(color("&b/ferrum reload"));
+        sender.sendMessage(color("&b/ferrum backup &7———— &eStart Backup Manually"));
+        sender.sendMessage(color("&b/ferrum reload &7———— &eReload Configuration"));
     }
 
     @Override
@@ -32,7 +32,7 @@ public class FerrumCommand implements CommandExecutor {
                 });
                 sender.sendMessage(color("&aBackup Task Started!"));
             } else if (args[0].equalsIgnoreCase("task")) {
-                sender.sendMessage(color("&cForce executed tasks (Only Support for test CLI Task)"));
+                sender.sendMessage(color("&cForce executed tasks (Only Support for test none-argument task)"));
                 CompletableFuture.runAsync(() -> {
                     Ferrum.taskManager.parseExpressions(Ferrum.instance.getConfig().getStringList("backups.finished-tasks"), new ResultInfo(null, null), null);
                 });

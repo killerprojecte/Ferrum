@@ -44,6 +44,8 @@ backups:
   # 完成后执行任务
   finished-tasks:
     - "cli(cmd.exe /c \"start cmd.exe /c pause\")"
+    #ftp(Host-地址, Port-端口, User-用户名, Password-密码, Security-加密(ftp, ftps, ftpes), Optional可选[Path-目录])
+    #- "ftp(127.0.0.1, 21, ferrum, FerrumPowered, ftp)"
   # Reading Buffer Size
   # 文件读取缓存大小
   buffer: 1024

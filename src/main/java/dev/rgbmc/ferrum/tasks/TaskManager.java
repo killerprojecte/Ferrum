@@ -13,6 +13,7 @@ public class TaskManager {
     public TaskManager() {
         fastExpression = new FastExpression();
         fastExpression.getFunctionManager().register(new CLITask());
+        fastExpression.getFunctionManager().register(new FtpTask());
     }
 
     public FastExpression getFastExpression() {
