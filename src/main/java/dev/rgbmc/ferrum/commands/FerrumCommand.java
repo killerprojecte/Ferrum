@@ -27,15 +27,11 @@ public class FerrumCommand implements CommandExecutor {
                 Ferrum.instance.reloadCron();
                 sender.sendMessage(color("&aSuccessful reload configuration"));
             } else if (args[0].equalsIgnoreCase("backup")) {
-                CompletableFuture.runAsync(() -> {
-                    BackupUtils.startBackup(true, sender);
-                });
+                CompletableFuture.runAsync(() -> BackupUtils.startBackup(true, sender));
                 sender.sendMessage(color("&aBackup Task Started!"));
             } else if (args[0].equalsIgnoreCase("task")) {
                 sender.sendMessage(color("&cForce executed tasks (Only Support for test none-argument task)"));
-                CompletableFuture.runAsync(() -> {
-                    Ferrum.taskManager.parseExpressions(Ferrum.instance.getConfig().getStringList("backups.finished-tasks"), new ResultInfo(null, null), null);
-                });
+                CompletableFuture.runAsync(() -> Ferrum.taskManager.parseExpressions(Ferrum.instance.getConfig().getStringList("backups.finished-tasks"), new ResultInfo(null, null), null));
             } else {
                 sendHelp(sender);
             }

@@ -6,6 +6,8 @@ import dev.rgbmc.ferrum.tasks.TaskManager;
 import dev.rgbmc.ferrum.utils.CronUtils;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.Objects;
+
 public final class Ferrum extends JavaPlugin {
 
     public static Ferrum instance;
@@ -17,7 +19,7 @@ public final class Ferrum extends JavaPlugin {
         taskManager = new TaskManager();
         saveDefaultConfig();
         reloadCron();
-        getCommand("ferrum").setExecutor(new FerrumCommand());
+        Objects.requireNonNull(getCommand("ferrum")).setExecutor(new FerrumCommand());
         // Plugin startup logic
 
     }

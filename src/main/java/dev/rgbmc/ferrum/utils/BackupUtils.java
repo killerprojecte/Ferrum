@@ -18,6 +18,7 @@ import java.time.Instant;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class BackupUtils {
@@ -37,8 +38,8 @@ public class BackupUtils {
         File workingPath = new File(System.getProperty("user.dir"));
         File targetFile = getTargetFile();
         if (!fromCommand) {
-            File folder = new File(section.getString("save-path"));
-            List<File> files = Arrays.stream(folder.listFiles())
+            File folder = new File(Objects.requireNonNull(Objects.requireNonNull(section).getString("save-path")));
+            List<File> files = Arrays.stream(Objects.requireNonNull(folder.listFiles()))
                     .filter(file -> file.getName().endsWith(".zip"))
                     .sorted((o1, o2) -> {
                         try {
@@ -56,11 +57,11 @@ public class BackupUtils {
             if (files.size() > maxBackups) {
                 for (int i = 0; i < (files.size() - maxBackups); i++) {
                     File deleteFile = files.get(i);
-                    deleteFile.delete();
+                    if (!deleteFile.delete()) Backup.logger.warn("Cannot delete file: " + deleteFile.getPath());
                 }
             }
         }
-        Backup backup = new Backup(targetFile, workingPath.toPath(), section.getString("save-path").replace("/", "\\"));
+        Backup backup = new Backup(targetFile, workingPath.toPath(), Objects.requireNonNull(Objects.requireNonNull(section).getString("save-path")).replace("/", "\\"));
         if (section.getBoolean("incremental")) {
             backup.setIncremental(true);
         }
@@ -99,10 +100,10 @@ public class BackupUtils {
 
     private static File getTargetFile() {
         ConfigurationSection section = Ferrum.instance.getConfig().getConfigurationSection("backups");
-        File folder = new File(section.getString("save-path"));
-        folder.mkdirs();
-        SimpleDateFormat simpleDateFormat = new SimpleDateFormat(section.getString("date-format"));
-        String zipName = section.getString("zip-name")
+        File folder = new File(Objects.requireNonNull(Objects.requireNonNull(section).getString("save-path")));
+        if (!folder.mkdirs()) Backup.logger.warn("Failed to mkdir folder");
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat(Objects.requireNonNull(section.getString("date-format")));
+        String zipName = Objects.requireNonNull(section.getString("zip-name"))
                 .replace("{date}", simpleDateFormat.format(new Date()));
 
         return new File(folder, zipName);

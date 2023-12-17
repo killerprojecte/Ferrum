@@ -91,14 +91,13 @@ public class Backup {
             ZipParameters zipParameters = getZipParameters();
             if (!incremental && file.exists()) {
                 logger.warn("Zip File already exist, Ferrum will delete it when progress start");
-                file.delete();
+                if (!file.delete()) throw new RuntimeException("Failed to delete old zip file");
             }
-            long count = Arrays.stream(file.getParentFile().listFiles()).filter(file1 -> file1.getName().endsWith(".full.zip")).count();
+            long count = Arrays.stream(Objects.requireNonNull(file.getParentFile().listFiles())).filter(file1 -> file1.getName().endsWith(".full.zip")).count();
             ZipOutputStream zipOutputStream = initializeZipOutputStream(
                     file,
                     password != null,
-                    (password == null ? new char[0] : password.toCharArray()),
-                    incremental
+                    (password == null ? new char[0] : password.toCharArray())
             );
             if (incremental) {
                 if (count >= 1) {
@@ -144,7 +143,7 @@ public class Backup {
                             StandardOpenOption.CREATE,
                             StandardOpenOption.WRITE,
                             StandardOpenOption.TRUNCATE_EXISTING);
-                    writeFileToZip(zipOutputStream, getParameters(zipParameters, "ferrum_index.json"), tempFile, false);
+                    writeFileToZip(zipOutputStream, getParameters(zipParameters), tempFile, false);
                     zipOutputStream.setComment("[Incremental Zip File]\n" +
                             "!! This file contains only files changed between the full-data zip (names containing .full) !!\n"
                             + getComment());
@@ -165,9 +164,7 @@ public class Backup {
             e.printStackTrace(System.err);
             return null;
         }
-        handlers.forEach(handler -> {
-            handler.handleZipFile(file, folder);
-        });
+        handlers.forEach(handler -> handler.handleZipFile(file, folder));
         return new ResultInfo(this, file);
     }
 
@@ -180,7 +177,7 @@ public class Backup {
             return;
         executorService.submit(() -> {
             if (file.isDirectory()) {
-                for (File children : file.listFiles()) {
+                for (File children : Objects.requireNonNull(file.listFiles())) {
                     walkingFile(zipOutputStream, zipParameters, children);
                 }
             } else {
@@ -198,7 +195,7 @@ public class Backup {
             return;
         executorService.submit(() -> {
             if (file.isDirectory()) {
-                for (File children : file.listFiles()) {
+                for (File children : Objects.requireNonNull(file.listFiles())) {
                     walkingFile(index, zipOutputStream, children, zipParameters);
                 }
             } else {
@@ -217,7 +214,7 @@ public class Backup {
             try {
                 writeFileToZip(zipOutputStream, zipParameters, file);
             } catch (Exception e) {
-                e.printStackTrace();
+                e.printStackTrace(System.err);
                 logger.error("[Skipped] Failed to zipping file " + relativizedPath + ", Error message: " + e.getMessage());
             }
         } else {
@@ -254,7 +251,7 @@ public class Backup {
                 writeFileToZip(zipOutputStream, zipParameters, file);
                 index.getCreation().add(relativizedPath.toString());
             } catch (Exception e) {
-                e.printStackTrace();
+                e.printStackTrace(System.err);
                 logger.error("[Skipped] Failed to checking file " + relativizedPath + ", Error message: " + e.getMessage());
             }
         } else {
@@ -262,7 +259,7 @@ public class Backup {
         }
     }
 
-    private ZipOutputStream initializeZipOutputStream(File outputZipFile, boolean encrypt, char[] password, boolean incremental) throws IOException {
+    private ZipOutputStream initializeZipOutputStream(File outputZipFile, boolean encrypt, char[] password) throws IOException {
         FileOutputStream fos = new FileOutputStream(outputZipFile);
 
         if (!encrypt) {
@@ -296,9 +293,9 @@ public class Backup {
         return copy;
     }
 
-    private ZipParameters getParameters(ZipParameters zipParameters, String name) {
+    private ZipParameters getParameters(ZipParameters zipParameters) {
         ZipParameters copy = new ZipParameters(zipParameters);
-        copy.setFileNameInZip(name);
+        copy.setFileNameInZip("ferrum_index.json");
         return copy;
     }
 

@@ -21,11 +21,9 @@ public class TaskManager {
     }
 
     public void parseExpressions(List<String> expressions, ResultInfo resultInfo, Backup backup) {
-        expressions.forEach(expression -> {
-            fastExpression.getFunctionManager().parseExpression(expression).forEach(callableFunction -> {
-                callableFunction.setParameter(new TaskParameter(((StringParameter) callableFunction.getParameter()).getString(), resultInfo, backup));
-                callableFunction.callFunction();
-            });
-        });
+        expressions.forEach(expression -> fastExpression.getFunctionManager().parseExpression(expression).forEach(callableFunction -> {
+            callableFunction.setParameter(new TaskParameter(((StringParameter) callableFunction.getParameter()).getString(), resultInfo, backup));
+            callableFunction.callFunction();
+        }));
     }
 }
