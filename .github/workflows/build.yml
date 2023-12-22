@@ -20,10 +20,7 @@ jobs:
       - name: Make Gradle Wrapper Executable
         run: chmod +x ./gradlew
       - name: Build
-        env:
-          USERNAME: ${{ secrets.USERNAME }}
-          PASSWORD: ${{ secrets.PASSWORD }}
-        run: ./gradlew shadowJar publish
+        run: ./gradlew shadowJar
       - name: capture build artifacts
         uses: actions/upload-artifact@v2
         with:
